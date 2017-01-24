@@ -16,12 +16,17 @@
 
 package jp.gcreate.sample.samplefirebasenotification;
 
+import android.app.PendingIntent;
+import android.content.Intent;
+import android.media.RingtoneManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
 
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
+
+import java.util.Map;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
     private static final String TAG = "FirebaseMessage";
@@ -30,8 +35,6 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     public void onMessageReceived(RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
 
-        // TODO: how to get notification when app was force killed. (app's process dose not completely worked)
-
         Log.d(TAG, "onMessageReceived: " + remoteMessage);
         // Not getting messages here? See why this may be: https://goo.gl/39bRNJ
         Log.d(TAG, "From: " + remoteMessage.getFrom());
@@ -39,23 +42,36 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // Check if message contains a data payload.
         if (remoteMessage.getData().size() > 0) {
             Log.d(TAG, "Message data payload: " + remoteMessage.getData());
+            Map<String, String> messageData = remoteMessage.getData();
+            createNotification(messageData.get("title"), messageData.get("body") + " from Data");
         }
 
         // Check if message contains a notification payload.
         if (remoteMessage.getNotification() != null) {
             Log.d(TAG, "Message Notification Body: " + remoteMessage.getNotification().getBody());
             RemoteMessage.Notification notification = remoteMessage.getNotification();
-            NotificationCompat.Builder builder      = new NotificationCompat.Builder(this);
-            builder.setContentText(notification.getBody())
-                   .setContentTitle(notification.getTitle())
-                   .setSmallIcon(R.mipmap.ic_launcher)
-                   .setAutoCancel(true);
-            // TODO: touch the notification and show previous activity
-            NotificationManagerCompat managerCompat = NotificationManagerCompat.from(this);
-            managerCompat.notify(0, builder.build());
+            createNotification(notification.getTitle(), notification.getBody() + " from Notification");
         }
 
         // Also if you intend on generating your own notifications as a result of a received FCM
         // message, here is where that should be initiated. See sendNotification method below.
+    }
+
+    private void createNotification(String title, String body) {
+        Intent intent = new Intent(this, MainActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent pendingIntent = PendingIntent
+                .getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this);
+        builder.setSmallIcon(R.mipmap.ic_launcher)
+               .setContentTitle(title)
+               .setContentText(body)
+               .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+               .setContentIntent(pendingIntent)
+               .setAutoCancel(true);
+
+        NotificationManagerCompat managerCompat = NotificationManagerCompat.from(this);
+        managerCompat.notify(0, builder.build());
     }
 }
